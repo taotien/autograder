@@ -1,0 +1,18 @@
+[project]
+name = "autograder"
+version = "1.0.0"
+description = "a tool for Computer Science students and instructors to test student projects for correctness"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "certifi==2022.6.15",
+  "charset-normalizer==2.1.0",
+  "idna==3.3",
+  "requests==2.28.1",
+  "tomlkit==0.11.1",
+  "urllib3==1.26.11",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
