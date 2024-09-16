@@ -1,6 +1,6 @@
 use std::{process::ExitStatus, str::from_utf8};
 
-use anyhow::Context;
+use anyhow::{bail, Context};
 use serde::Deserialize;
 use tokio::process::Command;
 
@@ -24,6 +24,20 @@ impl Tests {
         let mut tasks = Vec::with_capacity(self.tests.len());
 
         // TODO or just
+        let make_output = Command::new("make").output().await.with_context(|| {
+            format!(
+                "Could not spawn a child proccess, or get its output!
+                    Tried to call: make",
+            )
+        })?;
+
+        if !make_output.status.success() {
+            println!("make failed!");
+            let make_stdout = from_utf8(&make_output.stdout)?;
+            println!("{}", make_stdout);
+
+            return Ok(0);
+        }
 
         for test in self.tests {
             tasks.push(tokio::spawn(test.run()))
@@ -54,7 +68,11 @@ impl Test {
                 )
             })?;
 
-        if !output.status.success() {}
+        // TODO handle stderr
+        // if !output.status.success() {
+        //     println!("command fiald!");
+        //     println!("{}", from_utf8(&output.stdout)?);
+        // }
 
         let stdout = from_utf8(&output.stdout).with_context(|| {
             format!(
@@ -68,6 +86,8 @@ impl Test {
         if self.expected == stdout {
             grade = self.rubric;
         } else {
+            println!("expected: {}", self.expected);
+            println!("got '{}'", stdout);
             grade = 0;
         }
 

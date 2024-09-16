@@ -1,5 +1,7 @@
+use std::env::current_dir;
 use std::fs::read_to_string;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use anyhow::Context;
 use autograde_rs::cli::{Cli, Command};
@@ -10,9 +12,11 @@ use clap::Parser;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let config = Config::read_or_create()?;
-    println!("{:#?}", config);
 
     let args = Cli::parse();
+
+    let pwd = current_dir()?;
+    let project = pwd.file_name().unwrap();
 
     match args.command {
         Command::Test => {
@@ -24,8 +28,13 @@ async fn main() -> anyhow::Result<()> {
 
             // TODO support tilde expansion
             // TODO search pwd/parents for tests dir
-            let tests_path = Path::new(tests_path);
-            let tests_file = read_to_string(tests_path)?;
+            let mut tests_path = PathBuf::from_str(&tests_path)
+                .with_context(|| format!("Invalid path! {}", tests_path))?;
+            tests_path.push(project);
+            tests_path.push(project);
+            tests_path.set_extension("toml");
+            let tests_file = read_to_string(&tests_path)?;
+
             let tests: Tests = toml::from_str(&tests_file)
                 .with_context(|| format!("Could not parse tests at {}!", tests_path.display()))?;
 
