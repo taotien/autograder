@@ -1,3 +1,6 @@
+use std::fs::read_to_string;
+use std::path::Path;
+
 use anyhow::Context;
 use autograde_rs::cli::{Cli, Command};
 use autograde_rs::config::Config;
@@ -18,12 +21,18 @@ async fn main() -> anyhow::Result<()> {
             let tests_path = &config_test
                 .tests_path
                 .context("Could not find test_path in config file!")?;
-            let tests: Tests = toml::from_str(&tests_path)
-                .with_context(|| format!("Could not parse tests at {}!", tests_path))?;
+
+            // TODO support tilde expansion
+            // TODO search pwd/parents for tests dir
+            let tests_path = Path::new(tests_path);
+            let tests_file = read_to_string(tests_path)?;
+            let tests: Tests = toml::from_str(&tests_file)
+                .with_context(|| format!("Could not parse tests at {}!", tests_path.display()))?;
 
             // TODO auto pull
 
-            tests.run().await?;
+            let grade = tests.run().await?;
+            println!("{}", grade);
         }
     }
 
