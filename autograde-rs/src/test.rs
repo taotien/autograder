@@ -1,4 +1,4 @@
-use std::{process::ExitStatus, str::from_utf8};
+use std::{process::Output, str::from_utf8};
 
 use anyhow::{bail, Context};
 use serde::Deserialize;
@@ -17,28 +17,17 @@ struct Test {
     rubric: u64,
 }
 
+#[derive(Debug)]
+struct TestOutput {
+    output: Output,
+    grade: u64,
+}
+
 // fn pull_tests() {}
 
 impl Tests {
     pub async fn run(self) -> anyhow::Result<u64> {
         let mut tasks = Vec::with_capacity(self.tests.len());
-
-        // TODO or just
-        let make_output = Command::new("make").output().await.with_context(|| {
-            format!(
-                "Could not spawn a child proccess, or get its output!
-                    Tried to call: make",
-            )
-        })?;
-
-        if !make_output.status.success() {
-            println!("make failed!");
-            let make_stdout = from_utf8(&make_output.stdout)?;
-            println!("{}", make_stdout);
-
-            return Ok(0);
-        }
-
         for test in self.tests {
             tasks.push(tokio::spawn(test.run()))
         }
@@ -48,14 +37,22 @@ impl Tests {
             outputs.push(task.await?);
         }
 
-        let grade: u64 = outputs.iter().map(|o| o.as_ref().unwrap_or(&0)).sum();
+        let grade: u64 = outputs
+            .iter()
+            .map(|out| {
+                match out {
+                    Ok(out) => out.grade, // Err(e) => bail!(e)
+                    Err(_) => 0,
+                }
+            })
+            .sum();
 
         Ok(grade)
     }
 }
 
 impl Test {
-    async fn run(self) -> anyhow::Result<u64> {
+    async fn run(self) -> anyhow::Result<TestOutput> {
         let output = Command::new(&self.name)
             .args(&self.input)
             .output()
@@ -68,11 +65,16 @@ impl Test {
                 )
             })?;
 
-        // TODO handle stderr
-        // if !output.status.success() {
-        //     println!("command fiald!");
-        //     println!("{}", from_utf8(&output.stdout)?);
-        // }
+        // TODO better handle stderr
+        if !output.status.success() {
+            bail!(
+                "Could not run {},
+                if failed with output:
+                {}",
+                &self.name,
+                from_utf8(&output.stdout)?
+            );
+        }
 
         let stdout = from_utf8(&output.stdout).with_context(|| {
             format!(
@@ -91,6 +93,28 @@ impl Test {
             grade = 0;
         }
 
-        Ok(grade)
+        Ok(TestOutput { output, grade })
     }
+}
+
+pub async fn make() -> anyhow::Result<()> {
+    // TODO just, cargo, etc
+    let make_output = Command::new("make").output().await.with_context(|| {
+        format!(
+            "Could not spawn a child proccess, or get its output!
+                    Tried to call: make",
+        )
+    })?;
+
+    if !make_output.status.success() {
+        eprintln!("Failed to make!");
+        let make_stdout = from_utf8(&make_output.stdout)?;
+        let make_stderr = from_utf8(&make_output.stderr)?;
+        println!("{}", make_stdout);
+        eprintln!("{}", make_stderr);
+
+        bail!("Make failed with {}", make_output.status)
+    }
+
+    Ok(())
 }

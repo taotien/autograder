@@ -1,12 +1,12 @@
 use std::env::current_dir;
 use std::fs::read_to_string;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use anyhow::Context;
 use autograde_rs::cli::{Cli, Command};
 use autograde_rs::config::Config;
-use autograde_rs::test::Tests;
+use autograde_rs::test::{make, Tests};
 use clap::Parser;
 
 #[tokio::main]
@@ -26,6 +26,8 @@ async fn main() -> anyhow::Result<()> {
                 .tests_path
                 .context("Could not find test_path in config file!")?;
 
+            make().await?;
+
             // TODO support tilde expansion
             // TODO search pwd/parents for tests dir
             let mut tests_path = PathBuf::from_str(&tests_path)
@@ -33,13 +35,13 @@ async fn main() -> anyhow::Result<()> {
             tests_path.push(project);
             tests_path.push(project);
             tests_path.set_extension("toml");
-            let tests_file = read_to_string(&tests_path)?;
 
+            // TODO move to tests.rs
+            let tests_file = read_to_string(&tests_path)?;
             let tests: Tests = toml::from_str(&tests_file)
                 .with_context(|| format!("Could not parse tests at {}!", tests_path.display()))?;
 
             // TODO auto pull
-
             let grade = tests.run().await?;
             println!("{}", grade);
         }
