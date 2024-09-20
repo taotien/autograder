@@ -4,10 +4,26 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use anyhow::Context;
-use autograde_rs::cli::{Cli, Command};
+use clap::{Parser, Subcommand};
+
 use autograde_rs::config::Config;
 use autograde_rs::test::{make, Tests};
-use clap::Parser;
+
+#[derive(Parser, Debug)]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+    #[arg(short, long)]
+    project_path: Option<String>,
+    #[arg(short, long)]
+    tests_path: Option<String>,
+}
+
+#[derive(Subcommand, Debug)]
+enum Command {
+    Test,
+    // Configure,
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
