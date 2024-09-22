@@ -6,8 +6,9 @@ use std::str::FromStr;
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 
+use autograde_rs::build::make;
 use autograde_rs::config::Config;
-use autograde_rs::test::{make, Tests};
+use autograde_rs::test::Tests;
 
 #[derive(Parser, Debug)]
 struct Cli {
