@@ -8,7 +8,7 @@ use clap::{Parser, Subcommand};
 
 use autograde_rs::build::make;
 use autograde_rs::config::Config;
-use autograde_rs::test::Tests;
+use autograde_rs::test::{RunProject, Tests};
 
 #[derive(Parser, Debug)]
 struct Cli {

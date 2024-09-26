@@ -1,7 +1,15 @@
 use std::str::from_utf8;
 
 use anyhow::{bail, Context};
+use serde::Deserialize;
 use tokio::process::Command;
+
+#[derive(Deserialize, Debug)]
+pub enum BuildSystem {
+    Make,
+    Digital,
+    Cargo,
+}
 
 pub async fn make() -> anyhow::Result<()> {
     // TODO just, cargo, etc

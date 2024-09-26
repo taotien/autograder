@@ -4,6 +4,8 @@ use anyhow::{bail, Context};
 use serde::Deserialize;
 use tokio::process::Command;
 
+// use crate::build::BuildSystem;
+
 #[derive(Deserialize, Debug)]
 pub struct Tests {
     tests: Vec<Test>,
@@ -25,8 +27,18 @@ struct TestOutput {
 
 // fn pull_tests() {}
 
-impl Tests {
-    pub async fn run(self) -> anyhow::Result<u64> {
+#[allow(async_fn_in_trait)]
+pub trait RunProject {
+    async fn run(self) -> anyhow::Result<u64>;
+}
+
+#[allow(async_fn_in_trait)]
+pub trait RunUnit {
+    async fn run(self) -> anyhow::Result<TestOutput>;
+}
+
+impl RunProject for Tests {
+    async fn run(self) -> anyhow::Result<u64> {
         let mut tasks = Vec::with_capacity(self.tests.len());
         for test in self.tests {
             tasks.push(tokio::spawn(test.run()))
@@ -51,7 +63,7 @@ impl Tests {
     }
 }
 
-impl Test {
+impl RunUnit for Test {
     async fn run(self) -> anyhow::Result<TestOutput> {
         let output = Command::new(&self.name)
             .args(&self.input)
