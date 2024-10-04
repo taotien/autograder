@@ -5,9 +5,10 @@ use std::str::FromStr;
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
+use miette::WrapErr;
 
 use autograde_rs::build::make;
-use autograde_rs::config::Config;
+use autograde_rs::config::{Config, Test};
 use autograde_rs::unit::Units;
 
 #[derive(Parser, Debug)]
@@ -51,7 +52,7 @@ async fn main() -> miette::Result<()> {
 
             // TODO support tilde expansion
             // TODO search pwd/parents for tests dir
-            let mut tests_path = PathBuf::from_str(&tests_path)
+            let mut tests_path = PathBuf::from_str(tests_path)
                 .with_context(|| format!("Invalid path! {}", tests_path))
                 .unwrap();
             tests_path.push(project);
@@ -60,9 +61,6 @@ async fn main() -> miette::Result<()> {
 
             // TODO move to tests.rs
             let tests_file = read_to_string(&tests_path).unwrap();
-            // let tests_file = match read_to_string(&tests_path) {
-            //     Ok(f)
-            // }
             let tests: Units = toml::from_str(&tests_file)
                 .with_context(|| format!("Could not parse tests at {}!", tests_path.display()))
                 .unwrap();

@@ -14,10 +14,9 @@ pub enum BuildSystem {
 pub async fn make() -> anyhow::Result<()> {
     // TODO just, cargo, etc
     let make_output = Command::new("make").output().await.with_context(|| {
-        format!(
-            "Could not spawn a child proccess, or get its output!
-                    Tried to call: make",
-        )
+        "Could not spawn a child proccess or get its output!
+        Tried to call: make"
+            .to_string()
     })?;
 
     if !make_output.status.success() {

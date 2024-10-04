@@ -1,9 +1,9 @@
-use std::{process::Output, str::from_utf8};
+use std::str::{from_utf8, Utf8Error};
 
 use anyhow::Context;
 use miette::{Diagnostic, SourceSpan};
 use serde::Deserialize;
-use similar::TextDiff;
+use similar::{ChangeTag, DiffOp, TextDiff};
 use thiserror::Error;
 use tokio::process::Command;
 
@@ -31,6 +31,8 @@ struct UnitOutput {
 #[derive(Error, Diagnostic, Debug)]
 #[error("One or more tests failed")]
 pub struct UnitErrors {
+    #[source_code]
+    src: String,
     #[related]
     errors: Vec<UnitError>,
 }
@@ -44,6 +46,8 @@ pub enum UnitError {
     #[error(transparent)]
     #[diagnostic(transparent)]
     IncorrectOutput(#[from] IncorrectOutput),
+    #[error("Not UTF8")]
+    NotUtf8(Utf8Error),
     #[error("Could not run program")]
     Wrapped(std::io::Error),
 }
@@ -66,15 +70,16 @@ pub struct IncorrectOutput {
     #[source_code]
     src: String,
     // #[label("here")]
-    #[related]
-    span_list: Vec<IncorrectSpan>,
+    #[label(collection, "here")]
+    span_list: Vec<SourceSpan>,
 }
 
-#[derive(Error, Diagnostic, Debug, Clone)]
-#[error("Output doesn't match expected result")]
-struct IncorrectSpan {
-    at: SourceSpan,
-}
+// #[derive(Error, Diagnostic, Debug, Clone)]
+// #[error("output")]
+// struct IncorrectSpan {
+//     #[label("here")]
+//     at: SourceSpan,
+// }
 
 // fn pull_tests() {}
 
@@ -90,7 +95,7 @@ struct IncorrectSpan {
 
 // impl RunProject for Units {
 impl Units {
-    pub async fn run(self) -> Result<u64, UnitErrors> {
+    pub async fn run(self) -> miette::Result<u64> {
         let mut tasks = Vec::with_capacity(self.tests.len());
         for unit in self.tests {
             tasks.push(tokio::spawn(unit.run()))
@@ -101,19 +106,23 @@ impl Units {
             outputs.push(task.await.unwrap());
         }
 
-        let mut errors = vec![];
-        let grade: u64 = outputs
-            .into_iter()
-            .map(|out| {
-                match out {
-                    Ok(out) => out.grade, // Err(e) => bail!(e)
-                    Err(e) => {
-                        errors.push(e);
-                        0
-                    }
-                }
-            })
-            .sum();
+        // let mut errors = vec![];
+        // let grade: u64 = outputs
+        //     .into_iter()
+        //     .map(|out| {
+        //         match out {
+        //             Ok(out) => out.grade, // Err(e) => bail!(e)
+        //             Err(e) => {
+        //                 errors.push(e);
+        //                 0
+        //             }
+        //         }
+        //     })
+        //     .sum();
+
+        for out in outputs {
+            out?;
+        }
 
         // let errors: Vec<_> = errors
         //     .into_iter()
@@ -122,54 +131,67 @@ impl Units {
         //     // .map(|e| e.clone())
         //     .collect();
 
-        if errors.is_empty() {
-            Ok(grade)
-        } else {
-            Err(UnitErrors { errors })
-        }
+        // if errors.is_empty() {
+        todo!()
+        // Ok(grade)
+        // } else {
+        //     // Err(UnitErrors { errors })
+        // }
     }
 }
 
 // impl RunUnit for Unit {
 impl Unit {
     async fn run(self) -> Result<UnitOutput, UnitError> {
-        let output = Command::new(&self.name)
-            .args(&self.input)
+        let output = Command::new(&self.input.first().expect("Empty input in tests file!"))
+            .args(
+                self.input
+                    .split_first()
+                    .expect("Empty input in tests file!")
+                    .1,
+            )
             .output()
             .await
-            .map_err(|e| UnitError::Wrapped(e))?;
+            .map_err(UnitError::Wrapped)?;
 
         // TODO do we care about nonzero exits?
         // if !output.status.success() {
         // }
 
-        let stdout = from_utf8(&output.stdout)
-            .with_context(|| {
-                format!(
-                    "Output does not contain valid utf8!
-                    Tried to call: {}, with args {:?}",
-                    self.name, self.input
-                )
-            })
-            .unwrap();
+        let stdout = from_utf8(&output.stdout).map_err(|e| UnitError::NotUtf8(e))?;
 
         let diff = TextDiff::from_lines(self.expected.as_ref(), stdout);
 
         let mut errors = vec![];
         for op in diff.ops() {
-            let range = op.new_range();
-            let err = IncorrectSpan {
-                // src: stdout.into(),
-                at: range.into(),
-            };
-            errors.push(err);
+            match op {
+                DiffOp::Insert {
+                    new_index, new_len, ..
+                } => errors.push((*new_index..*new_len).into()),
+                DiffOp::Delete { new_index, .. } => errors.push((*new_index..0).into()),
+                DiffOp::Replace {
+                    new_index, new_len, ..
+                } => errors.push((*new_index..*new_len).into()),
+                DiffOp::Equal { .. } => continue,
+            }
+            // let range = op.new_range();
+            // errors.push(range.into());
         }
 
+        // println!("{:?}", diff.iter_all_changes());
+        // for change in diff.iter_all_changes() {
+        //     let sign = match change.tag() {
+        //         ChangeTag::Delete => "-",
+        //         ChangeTag::Insert => "+",
+        //         ChangeTag::Equal => " ",
+        //     };
+        //     print!("{}{}", sign, change);
+        // }
+
+        // println!("{}", stdout);
+
         if errors.is_empty() {
-            Ok(UnitOutput {
-                // output: stdout.into(),
-                grade: self.rubric,
-            })
+            Ok(UnitOutput { grade: self.rubric })
         } else {
             Err(UnitError::IncorrectOutput(IncorrectOutput {
                 src: stdout.into(),
