@@ -7,19 +7,39 @@ use similar::{ChangeTag, DiffOp, TextDiff};
 use thiserror::Error;
 use tokio::process::Command;
 
+use crate::config::Config;
+
 // use crate::build::BuildSystem;
 
 #[derive(Deserialize, Debug)]
 pub struct Units {
-    tests: Vec<Unit>,
+    pub tests: Vec<Unit>,
 }
 
 #[derive(Deserialize, Debug)]
-struct Unit {
+pub struct Unit {
     name: String,
     input: Vec<String>,
     expected: String,
     rubric: u64,
+}
+
+impl Unit {
+    // Interpolate strings with '$' place holder
+    pub fn interp_input(&mut self, config: &Config, executable: &str) {
+        const PROJECT_DIR_SUBSTRING: &str = "$project";
+        const DIGITAL_JAR_SUBSTRING: &str = "$digital";
+        self.input
+            .iter_mut()
+            .map(|slice| {
+                if slice.contains(PROJECT_DIR_SUBSTRING) {
+                    *slice = slice.replace(PROJECT_DIR_SUBSTRING, executable)
+                } else if slice.contains(DIGITAL_JAR_SUBSTRING) {
+                    *slice = config.test.clone().unwrap().digital_path().to_string();
+                }
+            })
+            .for_each(drop); // Consume the iterator
+    }
 }
 
 #[derive(Debug)]

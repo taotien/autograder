@@ -17,7 +17,7 @@ pub struct Config {
     pub test: Option<Test>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Test {
     // TODO make this a vec to support multiple classes
     pub tests_path: Option<String>,
