@@ -220,3 +220,33 @@ impl Unit {
         }
     }
 }
+
+#[tokio::test]
+async fn test_unit_run() -> miette::Result<()> {
+    use miette::IntoDiagnostic;
+
+    let test = Unit {
+        name: "".into(),
+        input: vec!["echo", "hello world"]
+            .iter_mut()
+            .map(|s| s.to_owned())
+            .collect(),
+        expected: "hello world\n".into(),
+        rubric: 100,
+    };
+    test.run().await.into_diagnostic().unwrap();
+
+    let test = Unit {
+        name: "".into(),
+        input: vec!["echo", "howdy y'all"]
+            .iter_mut()
+            .map(|s| s.to_owned())
+            .collect(),
+        expected: "hello world\n".into(),
+        rubric: 100,
+    };
+    // test.run().await?;
+    assert!(test.run().await.is_err());
+
+    Ok(())
+}
