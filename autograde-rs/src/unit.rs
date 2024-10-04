@@ -2,7 +2,7 @@ use std::str::{from_utf8, Utf8Error};
 
 use miette::{Diagnostic, Report, SourceSpan};
 use serde::Deserialize;
-use similar::{DiffOp, TextDiff};
+use similar::{ChangeTag, DiffOp, TextDiff};
 use thiserror::Error;
 use tokio::process::Command;
 
@@ -87,8 +87,6 @@ pub enum UnitError {
 // )]
 #[diagnostic()]
 pub struct IncorrectOutput {
-    #[source_code]
-    src: String,
     #[related]
     span_list: Vec<IncorrectSpan>,
 }
@@ -97,6 +95,8 @@ pub struct IncorrectOutput {
 #[error("Want: {expected:?}, got: ")]
 struct IncorrectSpan {
     expected: Option<String>,
+    #[source_code]
+    got: String,
     #[label("here")]
     at: SourceSpan,
 }
@@ -166,45 +166,20 @@ impl Unit {
 
         let mut errors = vec![];
         let diff = TextDiff::from_lines(self.expected.as_ref(), stdout);
-        let mut total_new_index = 0;
-        let mut total_old_index = 0;
         for op in diff.ops() {
-            // op.old_range()
-            // op.new_range().count();
-            // op.old_range().count();
-            match op {
-                DiffOp::Insert {
-                    new_index, new_len, ..
-                } => {
-                    errors.push(IncorrectSpan {
-                        expected: None,
-                        at: (*new_index..*new_len).into(),
-                    });
+            for change in diff.iter_changes(op) {
+                if change.tag() == ChangeTag::Equal {
+                    continue;
                 }
-                DiffOp::Delete {
-                    old_index,
-                    old_len,
-                    new_index,
-                } => errors.push(IncorrectSpan {
+                errors.push(IncorrectSpan {
                     expected: self
                         .expected
-                        .get(*old_index..*old_len)
+                        .lines()
+                        .nth(change.old_index().unwrap())
                         .map(|s| s.to_owned()),
-                    at: (*new_index..0).into(),
-                }),
-                DiffOp::Replace {
-                    old_index,
-                    old_len,
-                    new_index,
-                    new_len,
-                } => errors.push(IncorrectSpan {
-                    expected: self
-                        .expected
-                        .get(*old_index..*old_len)
-                        .map(|s| s.to_owned()),
-                    at: (*new_index..*new_len).into(),
-                }),
-                DiffOp::Equal { .. } => continue,
+                    got: change.to_string(),
+                    at: (op.new_range().into()),
+                })
             }
         }
 
@@ -212,7 +187,7 @@ impl Unit {
             Ok(UnitOutput { grade: self.rubric })
         } else {
             Err(UnitError::IncorrectOutput(IncorrectOutput {
-                src: stdout.into(),
+                // src: stdout.into(),
                 span_list: errors,
             }))
         }

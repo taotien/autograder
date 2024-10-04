@@ -9,6 +9,7 @@ use anyhow::Context;
 use clap::{Parser, Subcommand};
 use miette::WrapErr;
 
+use autograde_rs::build::make;
 use autograde_rs::config::Config;
 use autograde_rs::unit::Units;
 
