@@ -1,9 +1,8 @@
 use std::str::{from_utf8, Utf8Error};
 
-use anyhow::Context;
-use miette::{Diagnostic, SourceSpan};
+use miette::{Diagnostic, Report, SourceSpan};
 use serde::Deserialize;
-use similar::{ChangeTag, DiffOp, TextDiff};
+use similar::{DiffOp, TextDiff};
 use thiserror::Error;
 use tokio::process::Command;
 
@@ -86,20 +85,21 @@ pub enum UnitError {
 // #[diagnostic(
 //     help("")
 // )]
+#[diagnostic()]
 pub struct IncorrectOutput {
     #[source_code]
     src: String,
-    // #[label("here")]
-    #[label(collection, "here")]
-    span_list: Vec<SourceSpan>,
+    #[related]
+    span_list: Vec<IncorrectSpan>,
 }
 
-// #[derive(Error, Diagnostic, Debug, Clone)]
-// #[error("output")]
-// struct IncorrectSpan {
-//     #[label("here")]
-//     at: SourceSpan,
-// }
+#[derive(Error, Diagnostic, Debug, Clone)]
+#[error("Want: {expected:?}, got: ")]
+struct IncorrectSpan {
+    expected: Option<String>,
+    #[label("here")]
+    at: SourceSpan,
+}
 
 // fn pull_tests() {}
 
@@ -126,37 +126,21 @@ impl Units {
             outputs.push(task.await.unwrap());
         }
 
-        // let mut errors = vec![];
-        // let grade: u64 = outputs
-        //     .into_iter()
-        //     .map(|out| {
-        //         match out {
-        //             Ok(out) => out.grade, // Err(e) => bail!(e)
-        //             Err(e) => {
-        //                 errors.push(e);
-        //                 0
-        //             }
-        //         }
-        //     })
-        //     .sum();
+        let grade: u64 = outputs
+            .into_iter()
+            .map(|out| {
+                match out {
+                    Ok(out) => out.grade, // Err(e) => bail!(e)
+                    Err(e) => {
+                        let report = Report::new(e);
+                        eprintln!("{:?}", report);
+                        0
+                    }
+                }
+            })
+            .sum();
 
-        for out in outputs {
-            out?;
-        }
-
-        // let errors: Vec<_> = errors
-        //     .into_iter()
-        //     // .map(|e| e.to_owned())
-        //     .flatten()
-        //     // .map(|e| e.clone())
-        //     .collect();
-
-        // if errors.is_empty() {
-        todo!()
-        // Ok(grade)
-        // } else {
-        //     // Err(UnitErrors { errors })
-        // }
+        Ok(grade)
     }
 }
 
@@ -180,35 +164,49 @@ impl Unit {
 
         let stdout = from_utf8(&output.stdout).map_err(|e| UnitError::NotUtf8(e))?;
 
-        let diff = TextDiff::from_lines(self.expected.as_ref(), stdout);
-
         let mut errors = vec![];
+        let diff = TextDiff::from_lines(self.expected.as_ref(), stdout);
+        let mut total_new_index = 0;
+        let mut total_old_index = 0;
         for op in diff.ops() {
+            // op.old_range()
+            // op.new_range().count();
+            // op.old_range().count();
             match op {
                 DiffOp::Insert {
                     new_index, new_len, ..
-                } => errors.push((*new_index..*new_len).into()),
-                DiffOp::Delete { new_index, .. } => errors.push((*new_index..0).into()),
+                } => {
+                    errors.push(IncorrectSpan {
+                        expected: None,
+                        at: (*new_index..*new_len).into(),
+                    });
+                }
+                DiffOp::Delete {
+                    old_index,
+                    old_len,
+                    new_index,
+                } => errors.push(IncorrectSpan {
+                    expected: self
+                        .expected
+                        .get(*old_index..*old_len)
+                        .map(|s| s.to_owned()),
+                    at: (*new_index..0).into(),
+                }),
                 DiffOp::Replace {
-                    new_index, new_len, ..
-                } => errors.push((*new_index..*new_len).into()),
+                    old_index,
+                    old_len,
+                    new_index,
+                    new_len,
+                } => errors.push(IncorrectSpan {
+                    expected: self
+                        .expected
+                        .get(*old_index..*old_len)
+                        .map(|s| s.to_owned()),
+                    at: (*new_index..*new_len).into(),
+                }),
                 DiffOp::Equal { .. } => continue,
             }
-            // let range = op.new_range();
-            // errors.push(range.into());
         }
-
-        // println!("{:?}", diff.iter_all_changes());
-        // for change in diff.iter_all_changes() {
-        //     let sign = match change.tag() {
-        //         ChangeTag::Delete => "-",
-        //         ChangeTag::Insert => "+",
-        //         ChangeTag::Equal => " ",
-        //     };
-        //     print!("{}{}", sign, change);
-        // }
-
-        // println!("{}", stdout);
 
         if errors.is_empty() {
             Ok(UnitOutput { grade: self.rubric })

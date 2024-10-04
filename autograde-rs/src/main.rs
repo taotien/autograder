@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use std::env::current_dir;
 use std::fs::read_to_string;
 use std::path::PathBuf;
