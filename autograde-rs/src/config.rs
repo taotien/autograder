@@ -1,3 +1,4 @@
+use std::env;
 use std::fs::{create_dir, read_to_string, write};
 
 use anyhow::Context;
@@ -21,8 +22,8 @@ pub struct Test {
     // TODO make this a vec to support multiple classes
     pub tests_path: Option<String>,
 
-    // TODO this should just be on user's PATH
-    pub digital_path: Option<String>,
+    // Path to Digital JAR file
+    digital_path: Option<String>,
 }
 
 impl Default for Config {
@@ -34,6 +35,16 @@ impl Default for Config {
 impl Default for Test {
     fn default() -> Self {
         todo!()
+    }
+}
+
+impl Test {
+    // Get JAR path from shell enviroment variable if not set in config.toml
+    pub fn digital_path(&self) -> String {
+        match &self.digital_path {
+            Some(inner) => inner.clone(),
+            None => env::var("DIGITAL_JAR").unwrap(),
+        }
     }
 }
 

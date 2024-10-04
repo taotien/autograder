@@ -45,8 +45,12 @@ async fn main() -> miette::Result<()> {
 
             let tests_path = &config_test
                 .tests_path
+                .clone()
                 .context("Could not find test_path in config file!")
                 .unwrap();
+
+            let digital_path = config_test.digital_path();
+            println!("Digital JAR path: {}", digital_path); // TODO: use log crate
 
             // make().await?;
 
