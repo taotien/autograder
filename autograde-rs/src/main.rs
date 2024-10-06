@@ -7,6 +7,7 @@ use std::str::FromStr;
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
+use log::info;
 use miette::WrapErr;
 
 use autograde_rs::build::make;
@@ -31,6 +32,8 @@ enum Command {
 
 #[tokio::main]
 async fn main() -> miette::Result<()> {
+    env_logger::init();
+
     let config = Config::read_or_create().unwrap();
 
     let args = Cli::parse();
@@ -41,7 +44,7 @@ async fn main() -> miette::Result<()> {
         .to_str()
         .map(|s| s.split('-').next().unwrap_or(s))
         .unwrap_or_else(|| project.to_str().unwrap());
-    println!("project executable name: {:?}", project);
+    info!("project executable name: {}", project);
 
     match args.command {
         Command::Test => {
@@ -58,7 +61,7 @@ async fn main() -> miette::Result<()> {
                 .unwrap();
 
             let digital_path = config_test.digital_path();
-            println!("Digital JAR path: {:?}", digital_path); // TODO: use log crate
+            info!("Digital JAR path: {:?}", digital_path); // TODO: use log crate
 
             // make().await?;
 
@@ -70,7 +73,7 @@ async fn main() -> miette::Result<()> {
             tests_path.push(project);
             tests_path.push(project);
             tests_path.set_extension("toml");
-            println!("test path: {:?}", tests_path);
+            info!("test path: {:?}", tests_path);
 
             // TODO move to tests.rs
             let tests_file = read_to_string(&tests_path).unwrap();
@@ -81,11 +84,11 @@ async fn main() -> miette::Result<()> {
             tests.tests.iter_mut().for_each(|test| {
                 test.interp_input(&config, project);
             });
-            println!("test unit struct: {:?}", tests);
+            info!("test unit struct: {:?}", tests);
 
             // TODO auto pull
             let grade = tests.run().await?;
-            println!("{}", grade);
+            info!("grade: {}", grade);
         }
     }
 
