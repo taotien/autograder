@@ -39,11 +39,11 @@ impl Default for Test {
 }
 
 impl Test {
-    // Get JAR path from shell enviroment variable if not set in config.toml
-    pub fn digital_path(&self) -> String {
+    // Get JAR path from shell environment variable if not set in config.toml
+    pub fn digital_path(&self) -> Option<String> {
         match &self.digital_path {
-            Some(inner) => inner.clone(),
-            None => env::var("DIGITAL_JAR").unwrap(),
+            Some(inner) => Some(inner.clone()),
+            None => env::var("DIGITAL_JAR").ok(),
         }
     }
 }

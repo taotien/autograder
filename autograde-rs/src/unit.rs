@@ -34,7 +34,14 @@ impl Unit {
                 if slice.contains(PROJECT_DIR_SUBSTRING) {
                     *slice = slice.replace(PROJECT_DIR_SUBSTRING, executable)
                 } else if slice.contains(DIGITAL_JAR_SUBSTRING) {
-                    *slice = config.test.clone().unwrap().digital_path().to_string();
+                    let digital_path = config.test.clone().unwrap().digital_path();
+                    *slice = match digital_path {
+                        Some(path) => path,
+                        None => {
+                            eprintln!("Error: digital_path is not set.");
+                            std::process::exit(1);
+                        }
+                    };
                 }
             })
             .for_each(drop); // Consume the iterator
