@@ -158,7 +158,7 @@ impl Units {
 // impl RunUnit for Unit {
 impl Unit {
     async fn run(self) -> Result<UnitOutput, UnitError> {
-        let output = Command::new(&self.input.first().expect("Empty input in tests file!"))
+        let output = Command::new(self.input.first().expect("Empty input in tests file!"))
             .args(
                 self.input
                     .split_first()
@@ -173,7 +173,7 @@ impl Unit {
         // if !output.status.success() {
         // }
 
-        let stdout = from_utf8(&output.stdout).map_err(|e| UnitError::NotUtf8(e))?;
+        let stdout = from_utf8(&output.stdout).map_err(UnitError::NotUtf8)?;
 
         let mut errors = vec![];
         let diff = TextDiff::from_lines(self.expected.as_ref(), stdout);
@@ -183,11 +183,9 @@ impl Unit {
                     continue;
                 }
                 errors.push(IncorrectSpan {
-                    expected: self
-                        .expected
-                        .lines()
-                        .nth(change.old_index().unwrap())
-                        .map(|s| s.to_owned()),
+                    expected: Some(self.expected.clone()), // .lines()
+                    // .nth(change.old_index().unwrap())
+                    // .map(|s| s.to_owned()),
                     got: change.to_string(),
                     at: (op.new_range().into()),
                 })
@@ -211,7 +209,7 @@ async fn test_unit_run() -> miette::Result<()> {
 
     let test = Unit {
         name: "".into(),
-        input: vec!["echo", "hello world"]
+        input: ["echo", "hello world"]
             .iter_mut()
             .map(|s| s.to_owned())
             .collect(),
@@ -222,7 +220,7 @@ async fn test_unit_run() -> miette::Result<()> {
 
     let test = Unit {
         name: "".into(),
-        input: vec!["echo", "howdy y'all"]
+        input: ["echo", "howdy y'all"]
             .iter_mut()
             .map(|s| s.to_owned())
             .collect(),
