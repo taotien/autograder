@@ -25,7 +25,7 @@ pub struct Unit {
 
 impl Unit {
     // Interpolate strings with '$' place holder
-    pub fn interp_input(&mut self, config: &Config, executable: &str) {
+    pub fn interp_input(&mut self, config: &Config, executable: &str) -> Result<(), UnitError> {
         const PROJECT_DIR_SUBSTRING: &str = "$project";
         const DIGITAL_JAR_SUBSTRING: &str = "$digital";
         self.input
@@ -39,12 +39,14 @@ impl Unit {
                         Some(path) => path,
                         None => {
                             eprintln!("Error: digital_path is not set.");
-                            std::process::exit(1);
+                            return Err(UnitError::DigitalJARPathNotSpecified);
                         }
                     };
                 }
+                Ok(())
             })
             .for_each(drop); // Consume the iterator
+        Ok(())
     }
 }
 
@@ -76,6 +78,8 @@ pub enum UnitError {
     NotUtf8(Utf8Error),
     #[error("Could not run program")]
     Wrapped(std::io::Error),
+    #[error("Could interp string")]
+    DigitalJARPathNotSpecified,
 }
 
 // #[derive(Error, Diagnostic, Debug)]

@@ -81,9 +81,18 @@ async fn main() -> miette::Result<()> {
                 .with_context(|| format!("Could not parse tests at {}!", tests_path.display()))
                 .unwrap();
 
-            tests.tests.iter_mut().for_each(|test| {
-                test.interp_input(&config, project);
-            });
+            tests
+                .tests
+                .iter_mut()
+                .for_each(|test| match test.interp_input(&config, project) {
+                    Ok(_) => {
+                        info!("Interpolation succeeded!");
+                    }
+                    Err(e) => {
+                        eprintln!("Interpolation failed: {}", e);
+                        panic!()
+                    }
+                });
             info!("test unit struct: {:?}", tests);
 
             // TODO auto pull
