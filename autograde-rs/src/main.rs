@@ -10,9 +10,9 @@ use clap::{Parser, Subcommand};
 use log::info;
 use miette::WrapErr;
 
-use autograde_rs::build::make;
-use autograde_rs::config::Config;
-use autograde_rs::unit::Units;
+use autograde::build::make;
+use autograde::config::Config;
+use autograde::unit::Units;
 
 #[derive(Parser, Debug)]
 struct Cli {
