@@ -35,14 +35,6 @@ enum Command {
 async fn main() -> miette::Result<()> {
     env_logger::init();
 
-    let pwd = current_dir().unwrap();
-    let project = pwd.file_name().unwrap();
-    let project = project
-        .to_str()
-        .map(|s| s.split('-').next().unwrap_or(s))
-        .unwrap_or_else(|| project.to_str().unwrap());
-    info!("project executable name: {}", project);
-
     match Args::parse().command {
         Command::Test => {
             let config = Config::read_or_create().unwrap();
@@ -63,13 +55,23 @@ async fn main() -> miette::Result<()> {
 
             // make().await?;
 
+            // `foo-bar` project directory implies `bar` executable name
+            let project_dir = current_dir().unwrap();
+            let project_exec = project_dir
+                .file_name()
+                .unwrap()
+                .to_str()
+                .map(|s| s.split('-').next().unwrap_or(s))
+                .expect("EXECUTABLE NAME");
+            info!("project executable name: {}", project_exec);
+
             // TODO support tilde expansion
             // TODO search pwd/parents for tests dir
             let mut tests_path = PathBuf::from_str(tests_path)
                 .with_context(|| format!("Invalid path! {}", tests_path))
                 .unwrap();
-            tests_path.push(project);
-            tests_path.push(project);
+            tests_path.push(project_exec);
+            tests_path.push(project_exec);
             tests_path.set_extension("toml");
             info!("test path: {:?}", tests_path);
 
@@ -79,16 +81,15 @@ async fn main() -> miette::Result<()> {
                 .with_context(|| format!("Could not parse tests at {}!", tests_path.display()))
                 .unwrap();
 
-            tests
-                .tests
-                .iter_mut()
-                .for_each(|test| match test.interp_input(&config, project) {
+            tests.tests.iter_mut().for_each(|test| {
+                match test.interp_input(&config, project_exec) {
                     Ok(_) => {}
                     Err(e) => {
                         eprintln!("Interpolation failed: {}", e);
                         panic!()
                     }
-                });
+                }
+            });
             info!("Interpolation succeeded!");
             debug!("test unit struct: \n{:#?}", tests);
 
