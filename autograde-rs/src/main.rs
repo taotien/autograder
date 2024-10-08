@@ -83,14 +83,13 @@ async fn main() -> miette::Result<()> {
                 .tests
                 .iter_mut()
                 .for_each(|test| match test.interp_input(&config, project) {
-                    Ok(_) => {
-                        info!("Interpolation succeeded!");
-                    }
+                    Ok(_) => {}
                     Err(e) => {
                         eprintln!("Interpolation failed: {}", e);
                         panic!()
                     }
                 });
+            info!("Interpolation succeeded!");
             debug!("test unit struct: \n{:#?}", tests);
 
             // TODO auto pull
