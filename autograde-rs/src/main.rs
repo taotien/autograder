@@ -26,6 +26,7 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Command {
+    /// Run the test case(s) for the current project
     Test,
     // Configure,
 }
