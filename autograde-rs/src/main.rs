@@ -51,7 +51,7 @@ async fn main() -> miette::Result<()> {
                 .unwrap();
 
             let digital_path = config_test.digital_path();
-            info!("Digital JAR path: {:?}", digital_path); // TODO: use log crate
+            info!("Digital JAR path: {:?}", digital_path);
 
             // make().await?;
 
