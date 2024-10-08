@@ -7,7 +7,7 @@ use std::str::FromStr;
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
-use log::info;
+use log::{debug, info};
 use miette::WrapErr;
 
 use autograde::build::make;
@@ -93,7 +93,7 @@ async fn main() -> miette::Result<()> {
                         panic!()
                     }
                 });
-            info!("test unit struct: {:?}", tests);
+            debug!("test unit struct: \n{:#?}", tests);
 
             // TODO auto pull
             let grade = tests.run().await?;

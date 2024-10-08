@@ -25,7 +25,8 @@
           buildInputs = [
           ];
           DIGITAL_JAR = "${pkgs.digital}/share/java/Digital.jar";
-          RUST_LOG = "info";
+          # RUST_LOG = "info";
+          RUST_LOG = "debug";
         };
       });
 }
