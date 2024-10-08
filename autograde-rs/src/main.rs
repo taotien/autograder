@@ -15,7 +15,7 @@ use autograde::config::Config;
 use autograde::unit::Units;
 
 #[derive(Parser, Debug)]
-struct Cli {
+struct Args {
     #[command(subcommand)]
     command: Command,
     #[arg(short, long)]
@@ -35,10 +35,6 @@ enum Command {
 async fn main() -> miette::Result<()> {
     env_logger::init();
 
-    let config = Config::read_or_create().unwrap();
-
-    let args = Cli::parse();
-
     let pwd = current_dir().unwrap();
     let project = pwd.file_name().unwrap();
     let project = project
@@ -47,8 +43,9 @@ async fn main() -> miette::Result<()> {
         .unwrap_or_else(|| project.to_str().unwrap());
     info!("project executable name: {}", project);
 
-    match args.command {
+    match Args::parse().command {
         Command::Test => {
+            let config = Config::read_or_create().unwrap();
             let config_test = config
                 .test
                 .clone()
