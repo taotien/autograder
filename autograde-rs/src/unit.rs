@@ -173,7 +173,9 @@ impl TestUnit {
         // if !output.status.success() {
         // }
 
-        let stdout = from_utf8(&output.stdout).map_err(UnitError::NotUtf8)?;
+        let stdout = from_utf8(&output.stdout)
+            .map_err(UnitError::NotUtf8)?
+            .trim();
 
         let mut errors = vec![];
         let diff = TextDiff::from_lines(self.expected.as_ref(), stdout);

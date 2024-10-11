@@ -44,11 +44,15 @@ async fn main() -> miette::Result<()> {
                 .context("Config file missing test section!")
                 .unwrap();
 
-            let tests_path = &config_test
-                .tests_path
-                .clone()
-                .context("Could not find test_path in config file!")
-                .unwrap();
+            let tests_path = if let Some(u) = unit_path {
+                u
+            } else {
+                config_test
+                    .tests_path
+                    .clone()
+                    .context("Could not find test_path in config file!")
+                    .unwrap()
+            };
 
             let digital_path = config_test.digital_path();
             info!("Digital JAR path: {:?}", digital_path);
@@ -67,7 +71,7 @@ async fn main() -> miette::Result<()> {
 
             // TODO support tilde expansion
             // TODO search pwd/parents for tests dir
-            let mut tests_path = PathBuf::from_str(tests_path)
+            let mut tests_path = PathBuf::from_str(&tests_path)
                 .with_context(|| format!("Invalid path! {}", tests_path))
                 .unwrap();
             tests_path.push(project_exec);
