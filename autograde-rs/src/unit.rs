@@ -179,9 +179,12 @@ impl Unit {
         let diff = TextDiff::from_lines(self.expected.as_ref(), stdout);
         for op in diff.ops() {
             for change in diff.iter_changes(op) {
-                if change.tag() == ChangeTag::Equal {
+                if change.tag() == ChangeTag::Equal || change.value() == "\n" {
                     continue;
                 }
+
+                println!("{:#?}", change);
+
                 errors.push(IncorrectSpan {
                     expected: Some(self.expected.clone()), // .lines()
                     // .nth(change.old_index().unwrap())
