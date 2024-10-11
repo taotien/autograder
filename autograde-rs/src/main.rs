@@ -12,7 +12,7 @@ use miette::WrapErr;
 
 use autograde::build::make;
 use autograde::config::Config;
-use autograde::unit::Units;
+use autograde::unit::TestUnits;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -77,7 +77,7 @@ async fn main() -> miette::Result<()> {
 
             // TODO move to tests.rs
             let tests_file = read_to_string(&tests_path).unwrap();
-            let mut tests: Units = toml::from_str(&tests_file)
+            let mut tests: TestUnits = toml::from_str(&tests_file)
                 .with_context(|| format!("Could not parse tests at {}!", tests_path.display()))
                 .unwrap();
 

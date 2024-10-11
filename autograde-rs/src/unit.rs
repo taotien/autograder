@@ -11,19 +11,19 @@ use crate::config::Config;
 // use crate::build::BuildSystem;
 
 #[derive(Deserialize, Debug)]
-pub struct Units {
-    pub tests: Vec<Unit>,
+pub struct TestUnits {
+    pub tests: Vec<TestUnit>,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct Unit {
+pub struct TestUnit {
     name: String,
     input: Vec<String>,
     expected: String,
     rubric: u64,
 }
 
-impl Unit {
+impl TestUnit {
     // Interpolate strings with '$' place holder
     pub fn interp_input(&mut self, config: &Config, executable: &str) -> Result<(), UnitError> {
         const PROJECT_DIR_SUBSTRING: &str = "$project";
@@ -124,8 +124,8 @@ struct IncorrectSpan {
 //     async fn run(&self) -> Result<TestOutput, UnitError>;
 // }
 
-// impl RunProject for Units {
-impl Units {
+// impl RunProject for TestUnits {
+impl TestUnits {
     pub async fn run(self) -> miette::Result<u64> {
         let mut tasks = Vec::with_capacity(self.tests.len());
         for unit in self.tests {
@@ -156,7 +156,7 @@ impl Units {
 }
 
 // impl RunUnit for Unit {
-impl Unit {
+impl TestUnit {
     async fn run(self) -> Result<UnitOutput, UnitError> {
         let output = Command::new(self.input.first().expect("Empty input in tests file!"))
             .args(
@@ -210,7 +210,7 @@ impl Unit {
 async fn test_unit_run() -> miette::Result<()> {
     use miette::IntoDiagnostic;
 
-    let test = Unit {
+    let test = TestUnit {
         name: "".into(),
         input: ["echo", "hello world"]
             .iter_mut()
@@ -221,7 +221,7 @@ async fn test_unit_run() -> miette::Result<()> {
     };
     test.run().await.into_diagnostic().unwrap();
 
-    let test = Unit {
+    let test = TestUnit {
         name: "".into(),
         input: ["echo", "howdy y'all"]
             .iter_mut()
